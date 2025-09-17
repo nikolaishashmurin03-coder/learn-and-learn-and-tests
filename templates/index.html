@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LLM — Простой чат</title>
+    <style>
+      :root{
+        --bg:#0f1720; /* very dark blue-gray */
+        --card:#111827;
+        --muted:#9ca3af;
+        --accent:#d1d5db;
+        --primary:#e6edf3;
+        --bubble-user:#0b5cff;
+        --bubble-bot:#1f2937;
+      }
+      html,body{height:100%;}
+      body{margin:0;font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,var(--bg),#071023);color:var(--primary);display:flex;align-items:center;justify-content:center;padding:24px}
+      .app{width:100%;max-width:900px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);box-shadow:0 6px 30px rgba(2,6,23,0.6);border-radius:12px;overflow:hidden}
+      header{padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.02);display:flex;align-items:center;gap:12px}
+      header h1{margin:0;font-size:18px;font-weight:600;color:var(--primary)}
+      header p{margin:0;color:var(--muted);font-size:13px}
+      #chat{height:64vh;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:12px;background:transparent}
+      .msg{max-width:78%;padding:12px 14px;border-radius:10px;line-height:1.4;font-size:14px}
+      .msg.user{align-self:flex-end;background:linear-gradient(90deg,var(--bubble-user),#0a3ed6);color:#fff;border-bottom-right-radius:4px}
+      .msg.bot{align-self:flex-start;background:var(--bubble-bot);color:var(--primary);border-bottom-left-radius:4px;border:1px solid rgba(255,255,255,0.02)}
+      .meta{font-size:12px;color:var(--muted);margin-bottom:6px}
+      .composer{display:flex;gap:12px;padding:16px;border-top:1px solid rgba(255,255,255,0.02);background:linear-gradient(180deg,rgba(255,255,255,0.01),transparent)}
+      .composer input{flex:1;padding:12px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:#0b1220;color:var(--primary);outline:none}
+      .composer button{background:#0b63ce;color:white;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600}
+      .composer button:active{transform:translateY(1px)}
+      @media(max-width:600px){.app{border-radius:8px} .msg{max-width:92%} header h1{font-size:16px}}
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div>
+          <h1>LLM — Простой чат</h1>
+          <p>Демонстрация локального чата. Ответы — либо через OpenAI, либо через fallback.</p>
+        </div>
+      </header>
+      <div id="chat" role="log" aria-live="polite"></div>
+      <div class="composer">
+        <input id="prompt" type="text" placeholder="Введите вопрос и нажмите Enter" aria-label="Введите вопрос" />
+        <button id="send">Отправить</button>
+      </div>
+    </div>
+
+    <script>
+      const chatEl = document.getElementById('chat');
+      const promptEl = document.getElementById('prompt');
+      const sendBtn = document.getElementById('send');
+
+      function append(role, text){
+        const wrap = document.createElement('div');
+        wrap.className = 'msg ' + (role === 'user' ? 'user' : 'bot');
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        meta.textContent = role === 'user' ? 'Вы' : 'LLM';
+        const body = document.createElement('div');
+        body.textContent = text;
+        wrap.appendChild(meta);
+        wrap.appendChild(body);
+        chatEl.appendChild(wrap);
+        chatEl.scrollTop = chatEl.scrollHeight;
+      }
+
+      async function send(){
+        const prompt = promptEl.value.trim();
+        if(!prompt) return;
+        append('user', prompt);
+        promptEl.value = '';
+        append('bot', '...');
+        sendBtn.disabled = true;
+        try{
+          const res = await fetch('/chat',{
+            method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})
+          });
+          const data = await res.json();
+          const last = chatEl.querySelector('.bot:last-child div:last-child');
+          if(last) last.textContent = data.reply;
+        }catch(err){
+          const last = chatEl.querySelector('.bot:last-child div:last-child');
+          if(last) last.textContent = 'Ошибка: ' + (err.message||err);
+        }finally{
+          sendBtn.disabled = false;
+          promptEl.focus();
+        }
+      }
+
+      sendBtn.addEventListener('click', send);
+      promptEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') send(); });
+    </script>
+    <script type='text/javascript' src='config.js'></script>
+  </body>
+</html>

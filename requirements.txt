@@ -1,0 +1,4 @@
+Flask>=2.0
+requests
+# Optional: OpenAI client for better responses
+openai>=0.27
